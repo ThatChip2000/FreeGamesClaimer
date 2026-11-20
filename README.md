@@ -2,6 +2,13 @@
 
 Aplicación de escritorio nativa para Windows (`.exe`) **simple, liviana y de arranque rápido** diseñada exclusivamente para ver y reclamar juegos gratis temporales (*Free to Keep* / *Giveaways*) en **Epic Games**, **Steam** y **GOG** sin abrir ni descargar nunca los launchers de escritorio.
 
+## Descarga rápida (Windows 10/11 — 64 bits)
+
+👉 **[Descargar última versión (`FreeGamesClaimer.exe`) en Releases](https://github.com/ThatChip2000/FreeGamesClaimer/releases/latest)**
+
+* Ejecutable único **autocontenido** (no requiere instalar `.NET 10`).
+* Solo descarga `FreeGamesClaimer.exe` y haz doble clic.
+
 ---
 
 ## 1. Arquitectura y Stack Implementado
