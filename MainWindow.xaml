@@ -1,0 +1,462 @@
+<Window x:Class="FreeGamesClaimer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        xmlns:models="clr-namespace:FreeGamesClaimer.Models"
+        Title="Free Games Claimer — Epic, Steam &amp; GOG"
+        Width="1180"
+        Height="740"
+        MinWidth="680"
+        MinHeight="460"
+        ResizeMode="CanResize"
+        WindowStartupLocation="Manual"
+        Background="{StaticResource BgPrimary}"
+        Foreground="{StaticResource TextPrimary}">
+
+    <Window.Resources>
+        <DataTemplate x:Key="GameCardTemplate" DataType="{x:Type models:FreeGameOffer}">
+            <Border x:Name="CardBorder"
+                    Background="{StaticResource BgCard}"
+                    BorderBrush="{StaticResource BorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Margin="0,0,0,10"
+                    Padding="10"
+                    Cursor="Hand"
+                    MouseLeftButtonUp="GameCard_MouseLeftButtonUp">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Miniatura + Título -->
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0"
+                                Width="88"
+                                Height="50"
+                                CornerRadius="5"
+                                Background="#0F141D"
+                                ClipToBounds="True"
+                                VerticalAlignment="Top">
+                            <Image Source="{Binding ImageUrl}"
+                                   Stretch="UniformToFill"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Border>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                            <TextBlock Text="{Binding Title}"
+                                       FontSize="13.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimary}"
+                                       TextWrapping="Wrap"
+                                       MaxHeight="38"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding PriceBadgeText}"
+                                       FontSize="11"
+                                       Foreground="#4ADE80"
+                                       Margin="0,3,0,0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Fecha límite -->
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding EndsAtDisplay}"
+                               FontSize="11.5"
+                               Foreground="{StaticResource TextSecondary}"
+                               Margin="0,8,0,0" />
+
+                    <!-- Acciones -->
+                    <DockPanel Grid.Row="2" Margin="0,8,0,0" LastChildFill="False">
+                        <TextBlock Text="Abrir ficha →"
+                                   DockPanel.Dock="Left"
+                                   VerticalAlignment="Center"
+                                   FontSize="11.5"
+                                   Foreground="#60A5FA" />
+
+                        <Button DockPanel.Dock="Right"
+                                Content="{Binding ClaimButtonText}"
+                                Click="ToggleClaimedButton_Click"
+                                Tag="{Binding}"
+                                Padding="8,4"
+                                FontSize="11"
+                                Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource FlatButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsClaimed}" Value="True">
+                                            <Setter Property="Background" Value="#14532D" />
+                                            <Setter Property="BorderBrush" Value="#22C55E" />
+                                            <Setter Property="Foreground" Value="#BBF7D0" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </DockPanel>
+                </Grid>
+            </Border>
+
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsClaimed}" Value="True">
+                    <Setter TargetName="CardBorder" Property="Opacity" Value="0.72" />
+                    <Setter TargetName="CardBorder" Property="BorderBrush" Value="#1E4631" />
+                </DataTrigger>
+                <Trigger SourceName="CardBorder" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="CardBorder" Property="Background" Value="{StaticResource BgCardHover}" />
+                    <Setter TargetName="CardBorder" Property="BorderBrush" Value="#3B82F6" />
+                </Trigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320" MinWidth="240" MaxWidth="420" />
+            <ColumnDefinition Width="4" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- PANEL IZQUIERDO: Lista de juegos gratis y accesos rápidos -->
+        <Border Grid.Column="0"
+                Background="{StaticResource BgSidebar}"
+                BorderBrush="{StaticResource BorderSubtle}"
+                BorderThickness="0,0,1,0">
+            <DockPanel LastChildFill="True">
+
+                <!-- Cabecera -->
+                <Border DockPanel.Dock="Top"
+                        Padding="14,14,14,12"
+                        BorderBrush="{StaticResource BorderSubtle}"
+                        BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <DockPanel LastChildFill="False">
+                            <StackPanel DockPanel.Dock="Left">
+                                <TextBlock Text="Free Games Claimer"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimary}" />
+                                <TextBlock x:Name="LocaleText"
+                                           Text="Región detectada..."
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondary}"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+
+                            <Button x:Name="RefreshButton"
+                                    DockPanel.Dock="Right"
+                                    Content="↻ Actualizar"
+                                    Style="{StaticResource PrimaryButton}"
+                                    VerticalAlignment="Center"
+                                    Click="RefreshButton_Click" />
+                        </DockPanel>
+
+                        <!-- Accesos rápidos de sesión -->
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0"
+                                    Content="Epic"
+                                    Style="{StaticResource FlatButton}"
+                                    ToolTip="Abrir Epic Games Store para iniciar o verificar tu sesión"
+                                    Click="OpenEpicSession_Click" />
+
+                            <Button Grid.Column="2"
+                                    Content="Steam"
+                                    Style="{StaticResource FlatButton}"
+                                    ToolTip="Abrir Steam para iniciar o verificar tu sesión"
+                                    Click="OpenSteamSession_Click" />
+
+                            <Button Grid.Column="4"
+                                    Content="GOG"
+                                    Style="{StaticResource FlatButton}"
+                                    ToolTip="Abrir GOG para iniciar o verificar tu sesión"
+                                    Click="OpenGogSession_Click" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Pie de estado y caché -->
+                <Border DockPanel.Dock="Bottom"
+                        Background="#111620"
+                        BorderBrush="{StaticResource BorderSubtle}"
+                        BorderThickness="0,1,0,0"
+                        Padding="14,9">
+                    <StackPanel>
+                        <TextBlock x:Name="LastUpdatedText"
+                                   Text="Cargando ofertas públicas..."
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock x:Name="WarningText"
+                                   Visibility="Collapsed"
+                                   FontSize="11"
+                                   Foreground="{StaticResource AccentAmber}"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Lista desplazable de juegos -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,12,14,12">
+                    <StackPanel>
+
+                        <!-- Sección Epic Games -->
+                        <DockPanel Margin="0,0,0,8">
+                            <TextBlock Text="EPIC GAMES"
+                                       FontSize="11.5"
+                                       FontWeight="Bold"
+                                       Foreground="#93C5FD" />
+                            <TextBlock x:Name="EpicCountText"
+                                       Text="(0)"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       Margin="6,0,0,0" />
+                        </DockPanel>
+
+                        <ItemsControl x:Name="EpicGamesList"
+                                      ItemTemplate="{StaticResource GameCardTemplate}" />
+
+                        <Border x:Name="EpicEmptyBox"
+                                Visibility="Collapsed"
+                                Background="#171E2B"
+                                CornerRadius="6"
+                                Padding="12,10"
+                                Margin="0,0,0,14">
+                            <TextBlock Text="Sin juegos gratis temporales activos en Epic ahora mismo."
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+
+                        <!-- Sección Steam -->
+                        <DockPanel Margin="0,10,0,8">
+                            <TextBlock Text="STEAM (FREE TO KEEP)"
+                                       FontSize="11.5"
+                                       FontWeight="Bold"
+                                       Foreground="#67E8F9" />
+                            <TextBlock x:Name="SteamCountText"
+                                       Text="(0)"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       Margin="6,0,0,0" />
+                        </DockPanel>
+
+                        <ItemsControl x:Name="SteamGamesList"
+                                      ItemTemplate="{StaticResource GameCardTemplate}" />
+
+                        <Border x:Name="SteamEmptyBox"
+                                Visibility="Collapsed"
+                                Background="#171E2B"
+                                CornerRadius="6"
+                                Padding="12,10"
+                                Margin="0,0,0,14">
+                            <TextBlock Text="Sin juegos 100% gratis temporales activos en Steam hoy."
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+
+                        <!-- Sección GOG -->
+                        <DockPanel Margin="0,10,0,8">
+                            <TextBlock Text="GOG (FREE / GIVEAWAY)"
+                                       FontSize="11.5"
+                                       FontWeight="Bold"
+                                       Foreground="#C084FC" />
+                            <TextBlock x:Name="GogCountText"
+                                       Text="(0)"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       Margin="6,0,0,0" />
+                        </DockPanel>
+
+                        <ItemsControl x:Name="GogGamesList"
+                                      ItemTemplate="{StaticResource GameCardTemplate}" />
+
+                        <Border x:Name="GogEmptyBox"
+                                Visibility="Collapsed"
+                                Background="#171E2B"
+                                CornerRadius="6"
+                                Padding="12,10"
+                                Margin="0,0,0,8">
+                            <TextBlock Text="Sin juegos gratis temporales activos en GOG hoy."
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- Separador redimensionable -->
+        <GridSplitter Grid.Column="1"
+                      Width="4"
+                      HorizontalAlignment="Stretch"
+                      Background="Transparent"
+                      Cursor="SizeWE" />
+
+        <!-- PANEL DERECHO: Barra de navegación + WebView2 integrado -->
+        <Grid Grid.Column="2" Background="{StaticResource BgPrimary}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="44" />
+                <RowDefinition Height="2" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Barra superior del navegador -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource BgToolbar}"
+                    BorderBrush="{StaticResource BorderSubtle}"
+                    BorderThickness="0,0,0,1"
+                    Padding="10,0">
+                <DockPanel LastChildFill="True">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <Button x:Name="BackButton"
+                                Content="←"
+                                Style="{StaticResource NavIconButton}"
+                                IsEnabled="False"
+                                ToolTip="Atrás"
+                                Click="BackButton_Click" />
+                        <Button x:Name="ForwardButton"
+                                Content="→"
+                                Style="{StaticResource NavIconButton}"
+                                IsEnabled="False"
+                                Margin="5,0,0,0"
+                                ToolTip="Adelante"
+                                Click="ForwardButton_Click" />
+                        <Button x:Name="ReloadButton"
+                                Content="↻"
+                                Style="{StaticResource NavIconButton}"
+                                IsEnabled="False"
+                                Margin="5,0,10,0"
+                                ToolTip="Recargar página"
+                                Click="ReloadButton_Click" />
+                    </StackPanel>
+
+                    <Border Background="#111620"
+                            BorderBrush="{StaticResource BorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Height="28"
+                            Padding="10,0"
+                            VerticalAlignment="Center">
+                        <DockPanel LastChildFill="True">
+                            <TextBlock x:Name="SecurityBadge"
+                                       Text="🔒 HTTPS"
+                                       DockPanel.Dock="Left"
+                                       VerticalAlignment="Center"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#4ADE80"
+                                       Margin="0,0,8,0" />
+                            <TextBlock x:Name="AddressBarText"
+                                       Text="Selecciona un juego o una tienda en el panel izquierdo"
+                                       VerticalAlignment="Center"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                    </Border>
+                </DockPanel>
+            </Border>
+
+            <!-- Indicador discreto de carga -->
+            <ProgressBar x:Name="NavProgressBar"
+                         Grid.Row="1"
+                         Height="2"
+                         IsIndeterminate="True"
+                         Visibility="Collapsed"
+                         Foreground="{StaticResource AccentBlue}"
+                         Background="Transparent"
+                         BorderThickness="0" />
+
+            <!-- Aviso discreto cuando se bloquea un protocolo de launcher -->
+            <Border x:Name="BlockedBanner"
+                    Grid.Row="2"
+                    Visibility="Collapsed"
+                    Background="#3B2506"
+                    BorderBrush="#92400E"
+                    BorderThickness="0,0,0,1"
+                    Padding="12,7">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right"
+                            Content="✕"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="#FDE68A"
+                            Cursor="Hand"
+                            Click="DismissBanner_Click" />
+                    <TextBlock x:Name="BlockedBannerText"
+                               Foreground="#FDE68A"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+
+            <!-- Contenedor de WebView2 + pantalla de bienvenida -->
+            <Grid Grid.Row="3">
+                <wv2:WebView2 x:Name="Browser"
+                              Visibility="Collapsed"
+                              DefaultBackgroundColor="#0F1218" />
+
+                <Border x:Name="WelcomeOverlay" Background="{StaticResource BgPrimary}" Padding="32">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="500">
+                        <TextBlock Text="Reclama tus juegos gratis sin abrir launchers"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimary}"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
+
+                        <TextBlock Text="Haz clic en cualquier juego de la lista izquierda para abrir su ficha oficial aquí mismo, o usa los botones Epic, Steam y GOG para iniciar sesión."
+                                   FontSize="13.5"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,12,0,20" />
+
+                        <Border Background="#151B26"
+                                BorderBrush="{StaticResource BorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="16">
+                            <StackPanel>
+                                <TextBlock Text="• Sesión aislada cifrada por Windows (WebView2 DPAPI) fuera de OneDrive."
+                                           FontSize="12"
+                                           Foreground="{StaticResource TextSecondary}"
+                                           Margin="0,0,0,6" />
+                                <TextBlock Text="• Descargas deshabilitadas: nunca descargará launchers ni instaladores."
+                                           FontSize="12"
+                                           Foreground="{StaticResource TextSecondary}"
+                                           Margin="0,0,0,6" />
+                                <TextBlock Text="• Navegación restringida a los juegos gratis ofertados y páginas de sesión/compra."
+                                           FontSize="12"
+                                           Foreground="{StaticResource TextSecondary}"
+                                           Margin="0,0,0,6" />
+                                <TextBlock Text="• Protocolos steam://, epicgames:// y goggalaxy:// bloqueados."
+                                           FontSize="12"
+                                           Foreground="{StaticResource TextSecondary}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
